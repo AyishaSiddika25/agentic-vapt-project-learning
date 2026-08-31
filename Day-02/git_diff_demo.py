@@ -1,5 +1,6 @@
 def login(username):
-    return username
+    query = "SELECT * FROM users WHERE name='" + username + "'"
+    return query
 
 
 def search(query):

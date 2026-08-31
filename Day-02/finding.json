@@ -1,0 +1,7 @@
+{
+    "finding_type": "SQL Injection",
+    "severity": "High",
+    "file": "login.py",
+    "line": 2,
+    "status": "Needs Validation"
+}
