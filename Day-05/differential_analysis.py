@@ -31,7 +31,6 @@ def get_changed_line_numbers(file_path):
     changed_lines = []
 
     for line in result.stdout.splitlines():
-
         if line.startswith("@@"):
             new_part = line.split("+")[1].split(" ")[0]
 
@@ -50,7 +49,6 @@ def get_changed_line_numbers(file_path):
 
 
 def find_affected_functions(file_path, changed_lines):
-
     with open(file_path, "r", encoding="utf-8") as file:
         source_code = file.read()
 
@@ -59,16 +57,12 @@ def find_affected_functions(file_path, changed_lines):
     affected_functions = []
 
     for node in ast.walk(tree):
-
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-
             start_line = node.lineno
             end_line = node.end_lineno
 
             for changed_line in changed_lines:
-
                 if start_line <= changed_line <= end_line:
-
                     affected_functions.append(node.name)
                     break
 
@@ -76,7 +70,6 @@ def find_affected_functions(file_path, changed_lines):
 
 
 def check_security_relevance(file_path, affected_functions):
-
     with open(file_path, "r", encoding="utf-8") as file:
         source_code = file.read()
 
@@ -96,9 +89,7 @@ def check_security_relevance(file_path, affected_functions):
     security_relevant = []
 
     for node in ast.walk(tree):
-
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-
             if node.name not in affected_functions:
                 continue
 
@@ -108,11 +99,9 @@ def check_security_relevance(file_path, affected_functions):
             )
 
             if function_source:
-
                 function_lower = function_source.lower()
 
                 for keyword in security_keywords:
-
                     if keyword in function_lower:
                         security_relevant.append(node.name)
                         break
@@ -121,7 +110,6 @@ def check_security_relevance(file_path, affected_functions):
 
 
 def analyze_file(file_path):
-
     print("\n========================================")
     print(f"Changed File: {file_path}")
     print("========================================")
@@ -169,14 +157,12 @@ def analyze_file(file_path):
             print(f"- {function}()")
 
         print("\nAnalysis Required: YES")
-
     else:
         print("- No security-relevant changes detected")
         print("\nAnalysis Required: NO")
 
 
 def main():
-
     print("========================================")
     print("Differential Code Analysis")
     print("========================================")
