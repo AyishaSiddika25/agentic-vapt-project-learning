@@ -1,0 +1,11 @@
+rules:
+  - id: simple-sql-string-concatenation
+    languages:
+      - python
+    message: Possible SQL injection due to SQL query string concatenation
+    severity: WARNING
+    patterns:
+      - pattern: $QUERY = $SQL + $INPUT
+      - metavariable-regex:
+          metavariable: $SQL
+          regex: '(?i).*select.*'
