@@ -1,0 +1,23 @@
+[
+    {
+        "rule_id": "python.sql-injection",
+        "file": "login.py",
+        "line": 10,
+        "severity": "high",
+        "message": "Possible SQL injection"
+    },
+    {
+        "rule_id": "python.sql-injection",
+        "file": "login.py",
+        "line": 10,
+        "severity": "high",
+        "message": "Possible SQL injection"
+    },
+    {
+        "rule_id": "python.hardcoded-password",
+        "file": "config.py",
+        "line": 5,
+        "severity": "medium",
+        "message": "Possible hardcoded password"
+    }
+]
