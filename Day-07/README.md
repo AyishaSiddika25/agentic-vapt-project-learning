@@ -1,799 +1,549 @@
-# Day 7 – Finding Identity, Deduplication & Initial Gating
+# Day 7 – Finding Fingerprinting, Deduplication & Initial Gating
 
 ## Objective
 
-The objective of Day 7 is to understand how security findings can be uniquely identified, deduplicated, and initially gated before they move to the next stage of the AGENTC VAPT pipeline.
+The objective of Day 7 was to build the next layer after the Day-6 Semgrep → SARIF → normalized finding pipeline.
 
-Day 6 established the:
+The main focus was:
+
+- Stable finding identity
+- Finding fingerprints
+- Duplicate detection
+- Deduplication
+- Initial severity-based gating
+- Integration with the normalized finding format from Day 6
+
+Day 7 extends the scanner pipeline instead of creating a separate finding format.
+
+---
+
+# 1. Day 6 → Day 7 Integration
+
+Day 6 produces normalized security findings.
+
+Day 7 consumes those normalized findings.
 
 ```text
+Git Changes
+     |
+     v
+Differential Analysis
+     |
+     v
 Semgrep
-   ↓
-SARIF
-   ↓
-Normalized Finding
+     |
+     v
+SARIF 2.1.0
+     |
+     v
+Finding Normalization
+     |
+     v
+Stable Fingerprint
+     |
+     v
+Day 7
+     |
+     +------------------+
+     |                  |
+     v                  v
+Deduplication       Initial Gating
+     |                  |
+     +--------+---------+
+              |
+              v
+      Findings for
+      Further Analysis
 
-Day 7 builds the next Engineer 2 capability:
+This establishes the connection between the Day-6 scanner integration and the Day-7 finding-processing layer.
 
-Normalized Findings
-        ↓
-Finding Identity
-        ↓
-Fingerprint Generation
-        ↓
-Deduplication
-        ↓
-Initial Gating
-        ↓
-Findings for Further Analysis
+2. Normalized Finding Contract
 
-This work is part of the Detection, Gating and Rule Lifecycle responsibility of Engineer 2.
+Day 7 uses the same normalized finding structure established in Day 6.
 
-1. Engineer 2 Responsibility
+{
+    "scanner": "Semgrep",
+    "rule_id": "example-rule",
+    "message": "Security finding",
+    "severity": "high",
+    "file": "example.py",
+    "start_line": 10,
+    "start_column": 5,
+    "end_line": 10,
+    "end_column": 30,
+    "fingerprint": "..."
+}
 
-According to the AGENTC VAPT four-engineer production plan, Engineer 2 owns:
+Important fields include:
 
-Detection
-Gating
-Finding fingerprinting
-Deduplication
-Suppression
-Reachability analysis
-Scanner integrations
-SARIF normalization
-Security rule lifecycle
+scanner
+rule_id
+message
+severity
+file
+start_line
+start_column
+end_line
+end_column
+fingerprint
 
-The production plan specifically requires:
+The Day-7 implementation therefore does not use the old line field.
 
-Stable finding fingerprints
-Deduplication
-Reversible suppressions
-Initial gating
-Reachability ranking
-Rule generation and regression testing
+It uses:
 
-Day 7 focuses on the first part of this area:
+start_line
+end_line
 
-Finding Fingerprinting
-        +
-Deduplication
-        +
-Initial Gating
-2. Why Finding Identity Is Required
-
-Security scanners may report the same vulnerability multiple times.
-
-For example, a scanner may report:
-
-Rule: python.sql-injection
-File: login.py
-Line: 10
-
-If the same application is scanned again, the same finding may appear again.
-
-Without a stable identity, the system may treat it as a completely new finding.
-
-This can result in:
-
-Duplicate findings
-Incorrect finding counts
-Repeated notifications
-Unnecessary triage
-Difficulty tracking a vulnerability across scans
-
-Therefore, AGENTC VAPT needs a stable way to identify a finding.
+to remain compatible with Day 6.
 
 3. Finding Identity
 
-For the Day 7 implementation, the finding identity is created using:
+A security scanner may report the same underlying issue multiple times.
 
-rule_id
+For example:
+
+Finding 1
+SQL Injection
+login.py:10
+
+Finding 2
+SQL Injection
+login.py:10
+
+These findings represent the same finding location.
+
+A stable identity is therefore required.
+
+Day 6 already generates a deterministic fingerprint.
+
+Day 7 reuses that fingerprint when it is available.
+
+4. Fingerprint Generation
+
+The fingerprint is based on:
+
+Rule ID
 +
-file
+Normalized File Path
 +
-line
+Start Line
++
+End Line
 
-Example:
+Conceptually:
 
-python.sql-injection|login.py|10
-
-This represents the identity of the finding.
-
-The identity is then converted into a SHA-256 hash to create a fingerprint.
-
-Finding Identity
-       ↓
-python.sql-injection|login.py|10
-       ↓
+Finding Information
+        |
+        v
+Normalize File Path
+        |
+        v
+Create Identity String
+        |
+        v
 SHA-256
-       ↓
-Finding Fingerprint
-4. Finding Fingerprint
-
-A fingerprint is a unique identifier generated from the important properties of a finding.
+        |
+        v
+64-character fingerprint
 
 Example:
 
-Rule ID:
-python.sql-injection
+rule-id|login.py|10|10
 
-File:
-login.py
+is converted into a SHA-256 hexadecimal fingerprint.
 
-Line:
-10
+The same finding information produces the same fingerprint.
 
-Identity:
+Different finding locations produce different fingerprints.
 
-python.sql-injection|login.py|10
+5. Why Fingerprinting is Important
 
-Fingerprint:
+Stable finding identity supports:
 
-SHA-256(identity)
+Deduplication
+Finding tracking
+Suppression
+Historical comparison
+Regression detection
+Future reachability analysis
+Future AI/LLM triage
 
-The exact SHA-256 value is not important for the learning exercise.
+Without a stable identity, downstream systems may treat the same finding as a new finding on every scan.
 
-The important concept is:
+6. Deduplication
 
-Same finding
-     ↓
-Same identity
-     ↓
-Same fingerprint
+Deduplication removes repeated findings with the same fingerprint.
 
-Therefore, the system can recognize that two records represent the same finding.
+Example input:
 
-5. Example Findings
+Finding A → fingerprint-001
+Finding B → fingerprint-001
+Finding C → fingerprint-002
 
-For the Day 7 exercise, a sample finding file is used.
+After deduplication:
 
-sample_findings.json
+fingerprint-001
+fingerprint-002
+
+Result:
+
+Total findings: 3
+Unique findings: 2
+Duplicates: 1
+
+The first occurrence of a fingerprint is retained.
+
+7. Deduplication Workflow
+Normalized Findings
+        |
+        v
+Read Fingerprint
+        |
+        v
+Already Seen?
+     /     \
+   Yes      No
+    |        |
+    v        v
+Duplicate   Keep
+    |        |
+    +----+---+
+         |
+         v
+Unique Findings
+8. Initial Gating
+
+After deduplication, findings can be passed through an initial security gate.
+
+The Day-7 demonstration gate uses severity.
+
+Current policy:
+
+High   → KEEP
+Medium → KEEP
+Other  → FILTER
+
+The purpose of this gate is to demonstrate deterministic finding filtering.
+
+It is not the final production security decision.
+
+9. Why Deduplication Happens Before Gating
+
+The pipeline should avoid evaluating the same finding multiple times.
+
+Therefore:
+
+Normalized Findings
+        |
+        v
+Fingerprint
+        |
+        v
+Deduplication
+        |
+        v
+Initial Gating
+
+This ensures that the gate processes unique findings.
+
+10. Example
+
+Input:
 
 [
     {
+        "scanner": "Semgrep",
         "rule_id": "python.sql-injection",
-        "file": "login.py",
-        "line": 10,
         "severity": "high",
-        "message": "Possible SQL injection"
+        "file": "login.py",
+        "start_line": 10,
+        "end_line": 10,
+        "fingerprint": "demo-fingerprint-001"
     },
     {
+        "scanner": "Semgrep",
         "rule_id": "python.sql-injection",
-        "file": "login.py",
-        "line": 10,
         "severity": "high",
-        "message": "Possible SQL injection"
+        "file": "login.py",
+        "start_line": 10,
+        "end_line": 10,
+        "fingerprint": "demo-fingerprint-001"
     },
     {
+        "scanner": "Semgrep",
         "rule_id": "python.hardcoded-password",
-        "file": "config.py",
-        "line": 5,
         "severity": "medium",
-        "message": "Possible hardcoded password"
+        "file": "config.py",
+        "start_line": 5,
+        "end_line": 5,
+        "fingerprint": "demo-fingerprint-002"
     }
 ]
 
-The first two findings have the same:
+Initial state:
 
-rule_id
-file
-line
+Total findings: 3
 
-Therefore, they should receive the same fingerprint.
+After deduplication:
 
-They are treated as duplicates.
+Unique findings: 2
+Duplicates: 1
 
-6. Project Structure
+After gating:
 
-The Day 7 directory contains:
+python.sql-injection | login.py:10 | high | KEEP
 
+python.hardcoded-password | config.py:5 | medium | KEEP
+11. Files
 Day-07/
-│
 ├── README.md
 ├── sample_findings.json
 ├── fingerprint.py
 ├── deduplicate.py
 └── gate_findings.py
-File description
-File	Purpose
-README.md	Day 7 documentation
-sample_findings.json	Sample security findings
-fingerprint.py	Generates finding fingerprints
-deduplicate.py	Identifies duplicate findings
-gate_findings.py	Performs initial gating
-7. Coding Practice 1 – Fingerprint Generation
-File
+12. File Responsibilities
 fingerprint.py
-Code
-import hashlib
 
+Responsible for:
 
-def create_fingerprint(finding):
-    identity = (
-        f"{finding['rule_id']}|"
-        f"{finding['file']}|"
-        f"{finding['line']}"
-    )
-
-    fingerprint = hashlib.sha256(
-        identity.encode("utf-8")
-    ).hexdigest()
-
-    return fingerprint
-
-
-finding = {
-    "rule_id": "python.sql-injection",
-    "file": "login.py",
-    "line": 10
-}
-
-print("Finding identity:")
-print(
-    f"{finding['rule_id']}|"
-    f"{finding['file']}|"
-    f"{finding['line']}"
-)
-
-print("\nFingerprint:")
-print(create_fingerprint(finding))
-8. Running the Fingerprint Program
-
-Run the following command from the repository root:
-
-python Day-07\fingerprint.py
-
-Expected output:
-
-Finding identity:
-python.sql-injection|login.py|10
-
-Fingerprint:
-<64-character SHA-256 hash>
-
-The fingerprint is generated using Python's built-in hashlib module.
-
-No external package is required for this particular exercise.
-
-9. Coding Practice 2 – Deduplication
-File
+Reading normalized finding identity
+Reusing an existing Day-6 fingerprint
+Generating a compatible fingerprint when required
 deduplicate.py
 
-The program reads the sample findings and creates fingerprints for every finding.
+Responsible for:
 
-It then checks whether the fingerprint already exists.
+Processing findings
+Creating/reusing fingerprints
+Detecting duplicates
+Keeping the first occurrence
+Returning unique findings
+gate_findings.py
 
-If the fingerprint already exists:
+Responsible for:
 
-Duplicate
+Consuming deduplicated findings
+Applying the initial severity-based gate
+Producing a deterministic KEEP/FILTER decision
+sample_findings.json
 
-Otherwise:
+Provides controlled test data for:
 
-New / Unique Finding
-Code
-import json
-from fingerprint import create_fingerprint
+Duplicate findings
+Unique findings
+Finding severity
+Finding locations
+Fingerprints
+13. Commands
 
+Run the deduplication demonstration:
 
-with open("Day-07/sample_findings.json", "r", encoding="utf-8") as file:
-    findings = json.load(file)
+python Day-07/deduplicate.py
 
+Run the initial gate:
 
-unique_findings = {}
-duplicates = []
+python Day-07/gate_findings.py
 
+Run the Day-6 tests:
 
-for finding in findings:
-    fingerprint = create_fingerprint(finding)
-
-    finding["fingerprint"] = fingerprint
-
-    if fingerprint in unique_findings:
-        duplicates.append(finding)
-    else:
-        unique_findings[fingerprint] = finding
-
-
-print("Total findings:", len(findings))
-print("Unique findings:", len(unique_findings))
-print("Duplicates:", len(duplicates))
-
-print("\nUnique Findings:")
-
-for finding in unique_findings.values():
-    print(
-        f"- {finding['rule_id']} "
-        f"{finding['file']}:{finding['line']}"
-    )
-10. Running Deduplication
-
-Run:
-
-python Day-07\deduplicate.py
-
-Expected output:
-
+python -m unittest Day-06/test_semgrep_adapter.py -v
+14. Expected Deduplication Output
 Total findings: 3
 Unique findings: 2
 Duplicates: 1
 
 Unique Findings:
 - python.sql-injection login.py:10
+  Fingerprint: demo-fingerprint-001
+
 - python.hardcoded-password config.py:5
-
-This demonstrates that:
-
-3 scanner records
-       ↓
-2 unique findings
-       ↓
-1 duplicate removed from active processing
-
-The original finding does not need to be forgotten or destroyed. In a production system, finding history and decisions should remain traceable.
-
-11. Why Deduplication Is Important
-
-Without deduplication:
-
-Finding A
-Finding A
-Finding A
-Finding B
-Finding B
-
-The system may treat these as five separate findings.
-
-After deduplication:
-
-Finding A
-Finding B
-
-This provides a cleaner finding set for later stages.
-
-It also reduces unnecessary:
-
-Triage
-Model calls
-Validation attempts
-Notifications
-Review effort
-12. Coding Practice 3 – Initial Gating
-
-After deduplication, findings need to be evaluated to determine whether they should continue through the pipeline.
-
-This is called gating.
-
-For the Day 7 learning exercise, the simple policy is:
-
-High severity   → KEEP
-Medium severity → KEEP
-Low severity    → FILTER
-
-This is only a simplified demonstration.
-
-The production AGENTC VAPT system should use explicit, controlled policy and preserve the decision trail.
-
-13. Initial Gating Flow
-Unique Finding
-      ↓
-Check Severity
-      ↓
- ┌───────────────┐
- │ Severity      │
- └───────┬───────┘
-         │
-    ┌────┴────┐
-    ↓         ↓
- High/Medium  Low
-    ↓         ↓
-   KEEP      FILTER
-14. gate_findings.py
-Code
-import json
-from fingerprint import create_fingerprint
-
-
-with open("Day-07/sample_findings.json", "r", encoding="utf-8") as file:
-    findings = json.load(file)
-
-
-for finding in findings:
-    finding["fingerprint"] = create_fingerprint(finding)
-
-
-unique_findings = {}
-
-for finding in findings:
-    fingerprint = finding["fingerprint"]
-
-    if fingerprint not in unique_findings:
-        unique_findings[fingerprint] = finding
-
-
-print("Initial Gate Results:\n")
-
-
-for finding in unique_findings.values():
-
-    severity = finding["severity"]
-
-    if severity in ["high", "medium"]:
-        decision = "KEEP"
-    else:
-        decision = "FILTER"
-
-    print(
-        f"{finding['rule_id']} | "
-        f"{finding['file']}:{finding['line']} | "
-        f"{severity} | "
-        f"{decision}"
-    )
-15. Running Initial Gating
-
-Run:
-
-python Day-07\gate_findings.py
-
-Expected output:
-
+  Fingerprint: demo-fingerprint-002
+15. Expected Gate Output
 Initial Gate Results:
+
+Total findings: 3
+Unique findings: 2
+Duplicates removed: 1
 
 python.sql-injection | login.py:10 | high | KEEP
 python.hardcoded-password | config.py:5 | medium | KEEP
+16. Relevance to Agentic VAPT
 
-Both findings continue because their severity is either:
+Day 7 strengthens the detection and gating layer of the Agentic VAPT pipeline.
 
-high
+The overall direction is:
 
-or:
-
-medium
-16. Complete Day 7 Pipeline
-
-The complete learning implementation is:
-
-                  Security Scanner
-                        │
-                        ▼
-                Normalized Findings
-                        │
-                        ▼
-              ┌───────────────────┐
-              │ Finding Identity   │
-              └─────────┬─────────┘
-                        │
-                        ▼
-                 Fingerprint
-                        │
-                        ▼
-              ┌───────────────────┐
-              │  Deduplication    │
-              └─────────┬─────────┘
-                        │
-                        ▼
-                Unique Findings
-                        │
-                        ▼
-              ┌───────────────────┐
-              │  Initial Gating   │
-              └─────────┬─────────┘
-                        │
-                  ┌─────┴─────┐
-                  ▼           ▼
-                KEEP        FILTER
-                  │
-                  ▼
-             Next Stage
-                Triage
-17. Relationship With Day 6
-
-Day 6 focused on transforming scanner results into a normalized representation.
-
-Day 6
-
-Semgrep
-   ↓
-SARIF
-   ↓
-Normalized Finding
-
-Day 7 continues from that point:
-
-Day 7
-
-Normalized Finding
-   ↓
-Fingerprint
-   ↓
+Changed Code
+     |
+     v
+Security Scanners
+     |
+     v
+SARIF / Normalization
+     |
+     v
+Stable Fingerprint
+     |
+     v
 Deduplication
-   ↓
+     |
+     v
 Initial Gating
+     |
+     v
+Future Suppression
+     |
+     v
+Future Reachability
+     |
+     v
+Future AI / LLM Triage
 
-Therefore:
+The current Day-7 gate is intentionally deterministic.
 
-Day 6 + Day 7
+AI/LLM components are not given authority to modify or close findings at this stage.
 
-Scanner
-   ↓
-SARIF
-   ↓
-Normalized Finding
-   ↓
-Fingerprint
-   ↓
-Deduplication
-   ↓
-Gating
-   ↓
-Triage
+17. Day 7 Key Learnings
+1. Finding Identity
 
-This creates the foundation for the later AGENTC VAPT pipeline.
+Learned why security findings require stable identities across scans.
 
-18. Important Difference Between Filtering and Deleting
+2. Fingerprinting
 
-Gating should not simply mean:
+Implemented deterministic SHA-256-based finding identity compatible with Day 6.
 
-"Delete findings we don't want."
+3. Deduplication
 
-Instead, the system should make a traceable decision:
+Learned how duplicate scanner findings can be detected using fingerprints.
 
-Finding
-   ↓
-Decision
-   ↓
-Reason
-   ↓
-State
+4. Normalized Finding Contracts
 
-For example:
+Connected Day 7 to the normalized finding structure produced by Day 6.
 
-Finding:
-python.sql-injection
+5. Initial Gating
 
-Decision:
-KEEP
+Implemented a deterministic severity-based KEEP/FILTER decision.
 
-Reason:
-High severity
+6. Pipeline Ordering
 
-State:
-Active
-
-Or:
-
-Finding:
-example-rule
-
-Decision:
-FILTER
-
-Reason:
-Policy condition
-
-State:
-Filtered
-
-In the production design, filtering and suppression must remain visible, reversible, and auditable.
-
-19. Finding Lifecycle
-
-The Day 7 concepts contribute to a larger finding lifecycle:
-
-Detected
-   ↓
-Normalized
-   ↓
-Fingerprint Generated
-   ↓
-Deduplicated
-   ↓
-Gated
-   ↓
-Triage
-   ↓
-Validation
-   ↓
-Human Review
-   ↓
-Confirmed / Rejected / Accepted Risk
-
-The model must not independently suppress or close findings.
-
-Human control remains part of the production design.
-
-20. Security Considerations
-
-Finding identity must be designed carefully in a production system.
-
-A fingerprint should not rely only on information that can change unnecessarily.
-
-For example, using only:
-
-line number
-
-could be unstable.
-
-If code moves from:
-
-line 10
-
-to:
-
-line 15
-
-the same vulnerability might receive a different fingerprint.
-
-Therefore, the production fingerprint specification will need to consider stable attributes and repository context.
-
-The Day 7 implementation intentionally uses:
-
-rule_id + file + line
-
-as a simple learning model.
-
-It is not the final production fingerprint specification.
-
-21. Connection to AGENTC VAPT
-
-The four-engineer production plan assigns Engineer 2 responsibility for:
-
-Scanner Integration
-       ↓
-SARIF Normalization
-       ↓
-Finding Fingerprinting
-       ↓
-Deduplication
-       ↓
-Gating
-       ↓
-Reachability
-       ↓
-Rule Lifecycle
-
-Day 7 implements the middle portion of this flow:
-
-Finding
-   ↓
-Fingerprint
-   ↓
-Deduplication
-   ↓
-Initial Gate
-
-This will later connect with:
-
-Joern reachability
-Suppression
-Triage
-Rule generation
-Regression testing
-22. What I Learned Today
-Finding Identity
-
-I learned how security findings can be represented using stable identifying attributes.
-
-Fingerprinting
-
-I learned how a SHA-256 hash can be used to create a compact fingerprint for a finding.
-
-Deduplication
-
-I learned how fingerprints can be compared to identify duplicate findings.
-
-Gating
-
-I learned how findings can be evaluated against an initial policy before continuing through the security pipeline.
-
-Pipeline Design
-
-I understood that detection should not immediately lead to model analysis. Findings should first pass through deterministic processing such as:
-
-Normalization
-   ↓
-Fingerprinting
-   ↓
-Deduplication
-   ↓
-Gating
-23. Day 7 Key Takeaways
-
-The main concepts learned today are:
-
-Finding identity
-Finding fingerprints
-SHA-256 hashing
-Duplicate detection
-Unique finding storage
-Initial gating
-KEEP / FILTER decisions
-Finding lifecycle
-Traceable security decisions
-Deterministic preprocessing
-24. Production Relevance
-
-The Day 7 work directly contributes to Engineer 2's production responsibilities.
-
-The production system needs:
-
-Stable Finding Identity
-        ↓
-Reliable Deduplication
-        ↓
-Controlled Gating
-        ↓
-Accurate Triage Input
-
-This prevents the AI/validation stages from unnecessarily processing repeated findings.
-
-It also creates the foundation for future capabilities such as:
+Established:
 
 Fingerprint
     ↓
-Suppression
+Deduplication
     ↓
-Reachability Ranking
-    ↓
-Triage
-    ↓
-Validation
-25. Day 7 Status
+Gating
+
+rather than independently repeating finding-processing logic.
+
+18. Day 7 Status
 
 Status: Completed
 
-Completed
- Understood finding identity
- Implemented finding fingerprint generation
- Used SHA-256 for fingerprints
- Created sample security findings
- Implemented duplicate detection
- Implemented initial gating
- Tested the complete Day 7 flow
- Connected Day 7 with the Day 6 SARIF normalization pipeline
- Connected the work to Engineer 2 responsibilities
-26. Final Day 7 Architecture
-                 AGENTC VAPT
-                      │
-                      ▼
-              Security Scanners
-                      │
-                      ▼
-                  SARIF
-                      │
-                      ▼
-           Normalized Finding
-                      │
-                      ▼
-            Finding Fingerprint
-                      │
-                      ▼
-              Deduplication
-                      │
-                      ▼
-              Initial Gating
-                      │
-                ┌─────┴─────┐
-                ▼           ▼
-              KEEP        FILTER
-                │
-                ▼
-              Triage
-                │
-                ▼
-            Validation
-                │
-                ▼
-          Human Review
-Conclusion
+Completed Work
+Reviewed the Day-6 normalized finding contract
+Identified and corrected the Day-6 test/fixture mismatch
+Updated Day-7 to use start_line and end_line
+Maintained the Day-6 fingerprint identity scheme
+Implemented finding deduplication
+Removed duplicate processing logic from the gate
+Implemented initial severity-based gating
+Created controlled sample findings
+Connected Day-6 finding normalization with Day-7 processing
+19. Final Day 6 → Day 7 Pipeline
+                    Git Repository
+                          |
+                          v
+                     Git Diff
+                          |
+                          v
+                Changed Python Files
+                          |
+                          v
+               Differential Analysis
+                          |
+                          v
+                     Semgrep
+                          |
+                          v
+                    SARIF 2.1.0
+                          |
+                          v
+                Finding Normalization
+                          |
+                          v
+                Stable Fingerprinting
+                          |
+                          v
+                    Deduplication
+                          |
+                          v
+                  Initial Gating
+                          |
+                          v
+                Unique Security Findings
+                          |
+                          v
+                  Future Security Work
+                    /      |       \
+                   /       |        \
+                  v        v         v
+             Suppression Reachability AI/LLM
+                                      |
+                                      v
+                              Evidence Validation
+20. Conclusion
 
-Day 7 extended the deterministic detection pipeline by introducing finding identity, fingerprinting, deduplication, and initial gating.
+Day 7 extends the Day-6 Semgrep integration by introducing stable finding identity, duplicate detection, and initial deterministic gating.
 
-The main concept learned was that a security scanner finding should not immediately become a separate vulnerability record. The system first needs to determine:
+The important architectural change is that Day 7 now consumes the same normalized finding contract established by Day 6 instead of defining a separate finding structure.
 
-What finding is this?
-        ↓
-Have we already seen it?
-        ↓
-Should it continue?
+This creates a cleaner foundation for future suppression, reachability analysis, evidence validation, and AI-assisted security triage.
 
-This provides a clean and deterministic foundation for the later AGENTC VAPT stages, including AI triage, reachability analysis, exploit validation, and rule lifecycle management.
+
+---
+
+## One important thing before you run it
+
+Your **current `semgrep_results.sarif` is the differential-scan fixture**, containing the two findings:
+
+```text
+Day-05\payment.py:2
+Day-05\user.py:2
+
+Your README records exactly those two findings.
+
+Therefore, after replacing test_semgrep_adapter.py, run:
+
+python -m unittest Day-06/test_semgrep_adapter.py -v
+
+You should now get:
+
+Ran 18 tests
+
+OK
+
+Then:
+
+python Day-07\deduplicate.py
+
+and:
+
+python Day-07\gate_findings.py
+One architectural note
+
+For Day-7's demonstration, sample_findings.json remains useful because it deliberately contains a duplicate so you can demonstrate deduplication.
+
+For the actual integrated pipeline, the important path is:
+
+Day-06 normalize_findings()
+              ↓
+       normalized findings
+              ↓
+Day-07 deduplicate_findings()
+              ↓
+       unique findings
+              ↓
+Day-07 determine_gate_decision()
+
+That is the correction OpenCode was pointing toward. Your Day-6 documentation already describes fingerprinting as the foundation for downstream deduplication and gating.
