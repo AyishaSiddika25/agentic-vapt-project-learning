@@ -1,0 +1,44 @@
+[
+    {
+        "scanner": "Semgrep",
+        "rule_id": "python.sql-injection",
+        "message": "Possible SQL injection",
+        "severity": "high",
+        "file": "Day-10/login.py",
+        "start_line": 4,
+        "start_column": 5,
+        "end_line": 4,
+        "end_column": 75,
+        "risk_score": 7,
+        "priority": "MEDIUM",
+        "context": {
+            "user_input": true,
+            "database_operation": true,
+            "authentication": true,
+            "command_execution": false,
+            "external_endpoint": false,
+            "sensitive_data": false
+        }
+    },
+    {
+        "scanner": "Semgrep",
+        "rule_id": "python.hardcoded-password",
+        "message": "Possible hardcoded password",
+        "severity": "medium",
+        "file": "Day-10/config.py",
+        "start_line": 3,
+        "start_column": 1,
+        "end_line": 3,
+        "end_column": 35,
+        "risk_score": 6,
+        "priority": "MEDIUM",
+        "context": {
+            "user_input": false,
+            "database_operation": false,
+            "authentication": true,
+            "command_execution": false,
+            "external_endpoint": false,
+            "sensitive_data": true
+        }
+    }
+]
