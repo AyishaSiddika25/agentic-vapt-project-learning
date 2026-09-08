@@ -1,41 +1,61 @@
 import json
-from fingerprint import create_fingerprint
+
+from deduplicate import deduplicate_findings
 
 
-with open("Day-07/sample_findings.json", "r", encoding="utf-8") as file:
-    findings = json.load(file)
+def load_findings(file_path):
+    """Load normalized findings from a JSON file."""
+
+    with open(file_path, "r", encoding="utf-8") as file:
+        return json.load(file)
 
 
-# Add fingerprints
-for finding in findings:
-    finding["fingerprint"] = create_fingerprint(finding)
+def determine_gate_decision(finding):
+    """
+    Apply the Day-7 initial severity-based gate.
 
+    Policy:
+        high   -> KEEP
+        medium -> KEEP
+        other  -> FILTER
+    """
 
-# Remove duplicates
-unique_findings = {}
-
-for finding in findings:
-    fingerprint = finding["fingerprint"]
-
-    if fingerprint not in unique_findings:
-        unique_findings[fingerprint] = finding
-
-
-# Apply initial gating
-print("Initial Gate Results:\n")
-
-for finding in unique_findings.values():
-
-    severity = finding["severity"]
+    severity = finding["severity"].lower()
 
     if severity in ["high", "medium"]:
-        decision = "KEEP"
-    else:
-        decision = "FILTER"
+        return "KEEP"
 
-    print(
-        f"{finding['rule_id']} | "
-        f"{finding['file']}:{finding['line']} | "
-        f"{severity} | "
-        f"{decision}"
+    return "FILTER"
+
+
+def main():
+    findings = load_findings(
+        "Day-07/sample_findings.json"
     )
+
+    unique_findings, duplicates = deduplicate_findings(
+        findings
+    )
+
+    print("Initial Gate Results:\n")
+
+    print("Total findings:", len(findings))
+    print("Unique findings:", len(unique_findings))
+    print("Duplicates removed:", len(duplicates))
+
+    print()
+
+    for finding in unique_findings:
+        decision = determine_gate_decision(finding)
+
+        print(
+            f"{finding['rule_id']} | "
+            f"{finding['file']}:{finding['start_line']}-"
+            f"{finding['end_line']} | "
+            f"{finding['severity']} | "
+            f"{decision}"
+        )
+
+
+if __name__ == "__main__":
+    main()

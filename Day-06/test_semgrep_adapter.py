@@ -64,7 +64,7 @@ class TestSemgrepAdapter(unittest.TestCase):
 
         self.assertEqual(
             len(findings),
-            1
+            2
         )
 
     def test_finding_fields(self):
@@ -93,7 +93,7 @@ class TestSemgrepAdapter(unittest.TestCase):
 
         self.assertEqual(
             finding["file"],
-            "Day-06\\semgrep_demo.py"
+            "Day-05\\payment.py"
         )
 
         self.assertEqual(
