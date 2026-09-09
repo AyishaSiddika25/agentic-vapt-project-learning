@@ -1,0 +1,99 @@
+[
+    {
+        "finding": {
+            "scanner": "Semgrep",
+            "rule_id": "python.sql-injection",
+            "message": "Possible SQL injection",
+            "severity": "high",
+            "file": "Day-10/login.py",
+            "start_line": 4,
+            "start_column": 5,
+            "end_line": 4,
+            "end_column": 75,
+            "risk_score": 7,
+            "priority": "MEDIUM",
+            "context": {
+                "user_input": true,
+                "database_operation": true,
+                "authentication": true,
+                "command_execution": false,
+                "external_endpoint": false,
+                "sensitive_data": false
+            },
+            "source_context": [
+                {
+                    "line_number": 2,
+                    "code": "    query = \"SELECT * FROM users WHERE username='\" + username + \"'\""
+                },
+                {
+                    "line_number": 3,
+                    "code": "    return query"
+                }
+            ]
+        },
+        "llm_analysis": {
+            "finding": "Possible SQL injection",
+            "security_reasoning": "The finding appears security-relevant based on the scanner result, security context, and available source-code evidence.",
+            "evidence": [
+                "User-controlled input is involved.",
+                "A database operation is involved.",
+                "The finding is related to authentication.",
+                "Relevant source-code evidence is available."
+            ],
+            "confidence": "High",
+            "recommended_next_step": "Validate the suspected security path using source-code analysis and security testing before treating the finding as confirmed."
+        }
+    },
+    {
+        "finding": {
+            "scanner": "Semgrep",
+            "rule_id": "python.hardcoded-password",
+            "message": "Possible hardcoded password",
+            "severity": "medium",
+            "file": "Day-10/config.py",
+            "start_line": 3,
+            "start_column": 1,
+            "end_line": 3,
+            "end_column": 35,
+            "risk_score": 6,
+            "priority": "MEDIUM",
+            "context": {
+                "user_input": false,
+                "database_operation": false,
+                "authentication": true,
+                "command_execution": false,
+                "external_endpoint": false,
+                "sensitive_data": true
+            },
+            "source_context": [
+                {
+                    "line_number": 1,
+                    "code": "def get_database_config():"
+                },
+                {
+                    "line_number": 2,
+                    "code": "    username = \"admin\""
+                },
+                {
+                    "line_number": 3,
+                    "code": "    password = \"Admin@12345\""
+                },
+                {
+                    "line_number": 5,
+                    "code": "    return username, password"
+                }
+            ]
+        },
+        "llm_analysis": {
+            "finding": "Possible hardcoded password",
+            "security_reasoning": "The finding appears security-relevant based on the scanner result, security context, and available source-code evidence.",
+            "evidence": [
+                "The finding is related to authentication.",
+                "Sensitive data may be involved.",
+                "Relevant source-code evidence is available."
+            ],
+            "confidence": "Medium",
+            "recommended_next_step": "Validate the suspected security path using source-code analysis and security testing before treating the finding as confirmed."
+        }
+    }
+]
