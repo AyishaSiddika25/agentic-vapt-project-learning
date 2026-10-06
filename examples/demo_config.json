@@ -25,6 +25,14 @@
         "resource": "fixtures/demo_config.py"
       },
       "expires_at": "2030-01-01T00:00:00Z"
+    },
+    {
+      "id": "intentional-learning-sql-examples",
+      "reason": "Intentional vulnerable code used only as local security training fixtures.",
+      "selectors": {
+        "rule_id": "Day-06.semgrep_rules.simple-sql-string-concatenation",
+        "resource": "*/Day-*/*.py"
+      }
     }
   ]
 }

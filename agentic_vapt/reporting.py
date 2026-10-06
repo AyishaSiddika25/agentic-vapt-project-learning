@@ -8,6 +8,7 @@ import tempfile
 from contextlib import suppress
 from pathlib import Path
 
+from .ai import recommended_remediation
 from .pipeline import AssessmentResult
 
 
@@ -83,8 +84,8 @@ def render_markdown(result: AssessmentResult) -> str:
                     f"- Recommended next step: {analysis.recommended_next_step or 'unavailable'}",
                 ]
             )
-        elif finding.remediation:
-            lines.append(f"- Recommended remediation: {finding.remediation}")
+        else:
+            lines.append(f"- Recommended remediation: {recommended_remediation(finding)}")
         lines.append("")
     lines.extend(
         [
