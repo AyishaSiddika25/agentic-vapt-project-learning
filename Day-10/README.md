@@ -118,15 +118,15 @@ The finding points to line 4.
 
 config.py
 
-The hardcoded-password example contains:
+The credential-handling example now uses environment variables:
 
 def get_database_config():
-    username = "admin"
-    password = "Admin@12345"
+    username = os.getenv("DEMO_DATABASE_USERNAME", "admin")
+    password = os.getenv("DEMO_DATABASE_PASSWORD", "")
 
     return username, password
 
-The finding points to line 3.
+The historical finding now points to line 6 and demonstrates how source changes affect finding locations.
 
 4. Source-Code Context Extraction
 
@@ -164,11 +164,11 @@ Day-10/config.py:3
 
 the extracted context was:
 
-1: def get_database_config():
-2: username = "admin"
-3: password = "Admin@12345"
-4:
-5: return username, password
+4: def get_database_config():
+5: username = os.getenv("DEMO_DATABASE_USERNAME", "admin")
+6: password = os.getenv("DEMO_DATABASE_PASSWORD", "")
+7:
+8: return username, password
 
 This provides the AI with the code surrounding the reported finding.
 
@@ -319,11 +319,11 @@ The prompt contained:
 
 Relevant Source Code:
 
-1: def get_database_config():
-2: username = "admin"
-3: password = "Admin@12345"
-4:
-5: return username, password
+4: def get_database_config():
+5: username = os.getenv("DEMO_DATABASE_USERNAME", "admin")
+6: password = os.getenv("DEMO_DATABASE_PASSWORD", "")
+7:
+8: return username, password
 10. Day 9 → Day 10 Improvement
 Day 9
 

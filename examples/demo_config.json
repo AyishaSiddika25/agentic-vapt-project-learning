@@ -1,0 +1,31 @@
+{
+  "scanner": {
+    "timeout_seconds": 60,
+    "max_output_bytes": 25000000
+  },
+  "gate": {
+    "block_severities": ["critical", "high"],
+    "warn_severities": ["medium"],
+    "block_unknown_reachability": false,
+    "analyze_decisions": ["block", "warn", "unknown"]
+  },
+  "ai": {
+    "provider": "heuristic",
+    "model": "gpt-5-mini",
+    "allowed_hosts": ["api.openai.com"],
+    "timeout_seconds": 30,
+    "max_context_characters": 12000
+  },
+  "suppressions": [
+    {
+      "id": "demo-test-credential",
+      "reason": "Known non-production credential fixture retained for pipeline demonstration.",
+      "selectors": {
+        "rule_id": "demo.hardcoded-secret",
+        "resource": "fixtures/demo_config.py"
+      },
+      "expires_at": "2030-01-01T00:00:00Z"
+    }
+  ]
+}
+

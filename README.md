@@ -1,853 +1,289 @@
-# 🛡️ AI-Powered Agentic VAPT
+# Agentic VAPT
 
-### Automated • AI-Assisted • Exploit-Verified Security Testing
+Agentic VAPT is a defensive, local-first pipeline for turning security scanner output into normalized,
+deduplicated, explainable security decisions and auditable reports. It preserves the repository's original
+day-by-day learning exercises while providing a cohesive application in `agentic_vapt/`.
 
-> **A learning and implementation repository for understanding and building an AI-powered Agentic VAPT pipeline that combines code intelligence, security scanners, AI reasoning, vulnerability validation, risk analysis, and CI/CD automation.**
+The project is intended only for authorized security assessment. The built-in demo reads a local SARIF fixture
+and does not contact or attack any target.
 
----
+## Architecture
 
-## 📌 About This Repository
+```mermaid
+flowchart TD
+    A[Authorized target or SARIF] --> B[Scanner adapters]
+    B --> C[SARIF normalization]
+    C --> D[Finding validation]
+    D --> E[Stable fingerprint]
+    E --> F[Cross-scanner deduplication]
+    F --> G[Suppression evaluation]
+    G --> H[Reachability evaluation]
+    H --> I[Risk and policy evaluation]
+    I --> J{Deterministic security gate}
+    J -->|PASS / WARN / BLOCK / UNKNOWN| K[Bounded agentic analysis]
+    J -->|SUPPRESSED| L[Audit trail]
+    K --> M[JSON and Markdown reports]
+    L --> M
+```
 
-This repository documents my **daily learning, research, experiments, implementation work, and technical understanding** related to the **AI-Powered Agentic VAPT Project**.
+The security gate is the control boundary. AI analysis runs afterward as decision support and cannot change a
+gate decision.
 
-The goal is to understand how traditional Vulnerability Assessment and Penetration Testing (VAPT) techniques can be enhanced using:
+## What is implemented
 
-- 🔍 Static Application Security Testing (SAST)
-- 🌐 Dynamic Application Security Testing (DAST)
-- 🌳 Source-code parsing and AST analysis
-- 🧠 Code Property Graphs (CPG)
-- 🔄 Differential security analysis
-- 🤖 Large Language Models (LLMs)
-- 🧩 AI-agent based orchestration
-- 🔎 Finding validation
-- 🛡️ Exploit verification
-- 📊 Risk scoring
-- 🕸️ Attack-path analysis
-- 🔁 CI/CD integration
-- 📋 Security reporting
+- A scanner protocol plus local SARIF and Semgrep adapters.
+- Fault-tolerant SARIF 2.x normalization with tool, rule, severity, location, URI, evidence, original result,
+  and scanner fingerprint preservation.
+- One normalized finding model with validation, identity, suppression, reachability, risk, decision, and raw
+  metadata fields.
+- Deterministic SHA-256 correlation fingerprints and metadata-preserving cross-scanner deduplication.
+- External JSON suppression rules with selectors, reasons, expiry, and audit state.
+- Conservative `REACHABLE`, `UNREACHABLE`, and `UNKNOWN` reachability states.
+- Centralized `PASS`, `WARN`, `BLOCK`, `SUPPRESSED`, and `UNKNOWN` gate decisions with reasons.
+- Offline heuristic analysis and an optional OpenAI Responses-compatible provider with bounded context,
+  response validation, timeouts, and graceful errors.
+- Auditable JSON and Markdown reports that retain suppressed, unreachable, blocked, and unknown findings.
+- A safe fixture-based demo, 50 integrated tests, the 17 preserved Day-06 tests, and GitHub Actions CI.
 
-The repository is primarily a **learning and prototype environment**.  
-The daily implementations demonstrate individual concepts that contribute to the larger Agentic VAPT architecture.
+## Repository layout
 
----
+- `agentic_vapt/`: integrated application and CLI.
+- `tests/`: discoverable unit and integration tests.
+- `examples/`: safe SARIF demo and configuration.
+- `docs/audit.md`: baseline audit, architecture rationale, and security review.
+- `Day-01/` through `Day-12/`: preserved learning prototypes and notes.
 
-# 🎯 Project Vision
+## Learning history
 
-Traditional security scanners can generate large numbers of findings, but a scanner finding does not automatically mean that a vulnerability is:
+The Day-01–Day-12 directories remain the project's learning record: Git and change intelligence, AST and
+Tree-sitter exploration, differential analysis, Semgrep and SARIF, finding identity and gating, context and
+risk scoring, source-aware prompting, structured AI analysis, and decision validation. The integrated package
+turns those prototypes into the runnable pipeline documented below without erasing their educational context.
 
-- exploitable,
-- reachable,
-- security-critical,
-- relevant to the application's attack surface, or
-- worth prioritizing immediately.
+## Installation
 
-The vision of Agentic VAPT is to build a system that can move beyond simple:
+Python 3.11 or newer is required. The runtime has no third-party Python dependencies.
 
-```text
-SCAN → REPORT
+Windows PowerShell:
 
-towards:
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+```
 
-SCAN
-  ↓
-UNDERSTAND
-  ↓
-CORRELATE
-  ↓
-REASON
-  ↓
-VALIDATE
-  ↓
-VERIFY
-  ↓
-PRIORITIZE
-  ↓
-REPORT
+Linux or macOS:
 
-The system combines deterministic security tooling with AI-assisted reasoning and validation.
+```bash
+python3 -m venv .venv
+./.venv/bin/python -m pip install -e '.[dev]'
+```
 
-🧠 What Is Agentic VAPT?
+Semgrep is optional and is needed only when invoking `--target` and `--rules`. Existing SARIF can always be
+processed without installing a scanner.
 
-Agentic VAPT refers to a security-testing architecture in which software agents coordinate multiple security-analysis stages to investigate potential vulnerabilities.
+## Safe local demo
 
-Instead of relying on a single scanner, the system can combine information from:
+```powershell
+.\.venv\Scripts\python.exe -m agentic_vapt `
+  --sarif examples/demo.sarif `
+  --config examples/demo_config.json `
+  --output-dir reports/demo `
+  --exit-zero
+```
 
-Source Code
-     +
-Git History
-     +
-Static Analysis
-     +
-Dependency Analysis
-     +
-Secrets Detection
-     +
-Infrastructure Scanning
-     +
-DAST
-     +
-Code Graphs
-     +
-LLM Reasoning
-     +
-Security Validation
+The demo exercises raw findings, normalization, fingerprinting, exact deduplication, suppression, explicit
+reachability, gating, offline analysis, and report generation. Reports are written to
+`reports/demo/assessment.json` and `reports/demo/assessment.md`. `--exit-zero` is used because the realistic
+fixture intentionally produces a `BLOCK` decision.
 
-The resulting information can be correlated to determine whether a finding represents a meaningful security risk.
+Without `--exit-zero`, CLI exit codes are:
 
-🏗️ High-Level Architecture
-                    ┌──────────────────────┐
-                    │   Git Repository     │
-                    │   / Target App       │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │   Git Diff / Change   │
-                    │       Analysis        │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │   Code Intelligence   │
-                    │ AST / Tree-sitter /   │
-                    │ CPG / Call Graph      │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-              ┌──────────────────────────────────┐
-              │        Security Scanners         │
-              │                                  │
-              │  Semgrep                         │
-              │  OSV-Scanner                     │
-              │  Trivy                           │
-              │  Gitleaks                        │
-              │  Checkov                         │
-              │  DAST                            │
-              └────────────────┬─────────────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │   SARIF / Finding     │
-                    │    Normalization      │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │ Fingerprinting &      │
-                    │ Deduplication         │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │ Finding Gating &      │
-                    │ Filtering             │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │ Context Enrichment &  │
-                    │ Risk Scoring          │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │ Source-Code Context   │
-                    │ Extraction            │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │   LLM / AI Security  │
-                    │      Analysis         │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │ Vulnerability         │
-                    │ Validation            │
-                    │ / Exploit Verification│
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │ Risk & Attack-Path    │
-                    │ Analysis              │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │ Final Security        │
-                    │ Decision              │
-                    └──────────┬───────────┘
-                               │
-                ┌──────────────┴──────────────┐
-                ▼                             ▼
-       ┌────────────────┐             ┌────────────────┐
-       │ CI/CD Pipeline │             │ Reports /      │
-       │ & Security Gate│             │ Dashboard      │
-       └────────────────┘             └────────────────┘
-🔬 Core Project Components
-1. Git & Change Intelligence
+- `0`: `PASS` or `WARN` and reports were written.
+- `2`: security gate `BLOCK`.
+- `3`: assessment `UNKNOWN`, including when no scanner produced valid SARIF.
+- `64`: invalid command or configuration.
+- `74`: report write failure.
 
-The pipeline begins by understanding what changed in the application.
+## Scanners
 
-Instead of scanning everything blindly, Git history and diffs can be used to identify:
+Process one or more existing scanner outputs:
 
-Changed files
-Changed lines
-Changed functions
-Potentially affected components
-Security-relevant changes
-Dependent code
+```powershell
+.\.venv\Scripts\python.exe -m agentic_vapt --sarif path/to/first.sarif --sarif path/to/second.sarif
+```
 
-This enables differential security analysis.
+Run Semgrep against a local path under the current workspace:
 
-Git Commit
-    ↓
-Git Diff
-    ↓
-Changed Files
-    ↓
-Changed Functions
-    ↓
-Security Analysis Scope
-🌳 2. Source-Code Intelligence
+```powershell
+.\.venv\Scripts\python.exe -m agentic_vapt `
+  --target src `
+  --rules security/semgrep.yml `
+  --config agentic-vapt.json
+```
 
-Understanding source code is an important part of Agentic VAPT.
+The Semgrep adapter uses a fixed argument list, never invokes a shell, enforces a timeout, confines target and
+rule paths to the workspace, and treats missing executables, invalid output, and timeouts as structured scanner
+states. A failed scanner cannot accidentally produce a passing assessment when no other scanner succeeds.
 
-Technologies and concepts studied include:
+New scanners should implement the `Scanner` protocol and return a `ScanResult` containing SARIF. This keeps
+scanner-specific behavior out of normalization and every downstream stage.
 
-Python AST
-Tree-sitter
-Abstract Syntax Trees
-Code Property Graphs
-Call graphs
-Data-flow relationships
-Control-flow relationships
-Reachability analysis
+## SARIF normalization
 
-The objective is to transform raw source code into a representation that can support deeper security reasoning.
+The normalizer accepts SARIF 2.x documents and handles runs independently. It extracts:
 
-🔍 3. Security Scanning
+- tool name, version, and information URI;
+- rule ID, descriptions, help, properties, and rule-level severity;
+- result message, level, confidence, endpoints, and vulnerability/CWE identity;
+- all physical/logical locations, file URI, lines, columns, and snippets;
+- original rule/result objects and scanner-provided fingerprints.
 
-The architecture can combine multiple security scanners instead of depending on a single tool.
+Missing optional fields produce safe defaults. A malformed result is recorded and skipped without discarding
+valid sibling results. A malformed root or unsupported version fails closed as invalid scanner output.
 
-Potential scanner categories include:
+## Fingerprinting and deduplication
 
-Tool	Security Purpose
-Semgrep	Static code analysis and security rules
-OSV-Scanner	Dependency vulnerability detection
-Trivy	Container, dependency and infrastructure scanning
-Gitleaks	Secret detection
-Checkov	Infrastructure-as-Code security
-DAST tools	Runtime/web application testing
+The correlation fingerprint is SHA-256 over a canonical JSON object containing:
 
-Scanner output can be normalized into a common finding format.
+1. canonical vulnerability type, or the rule ID when no type is supplied;
+2. normalized resource path;
+3. primary start line;
+4. normalized endpoint.
 
-📄 4. SARIF & Finding Normalization
+Scanner name, timestamps, prose messages, and volatile evidence are excluded. Paths normalize URI encoding,
+slashes, drive prefixes, and case. Cross-scanner findings correlate only when they provide the same canonical
+vulnerability type and location; otherwise rule IDs remain part of identity. This avoids merging unrelated
+findings merely because their messages look alike.
 
-Different security tools produce different output formats.
+When duplicates merge, the pipeline keeps the strongest severity and confidence, combines sources, evidence,
+and locations deterministically, and retains each correlated raw finding under `raw_metadata`.
 
-The project therefore studies normalization into a common security-finding structure.
+## Suppression
 
-Example:
+Suppressions live in the configuration file and never delete findings. Each rule requires an ID, reason, and
+one or more selectors. Supported selectors are `fingerprint`, `rule_id`, `vulnerability_type`, `resource`,
+`endpoint`, and `scanner`; glob patterns are accepted. Optional `expires_at` uses ISO 8601.
 
+```json
 {
-    "scanner": "Semgrep",
-    "rule_id": "python.sql-injection",
-    "message": "Possible SQL injection",
-    "severity": "high",
-    "file": "login.py",
-    "start_line": 10,
-    "start_column": 5,
-    "end_line": 10,
-    "end_column": 30,
-    "fingerprint": "..."
+  "suppressions": [
+    {
+      "id": "accepted-test-fixture",
+      "reason": "Non-production fixture reviewed by the security team.",
+      "selectors": {
+        "rule_id": "demo.*",
+        "resource": "fixtures/*"
+      },
+      "expires_at": "2030-01-01T00:00:00Z"
+    }
+  ]
 }
+```
 
-This allows findings from different scanners to move through the same downstream pipeline.
+Matched findings receive `SUPPRESSED` plus the rule ID and reason in both reports. Invalid suppression rules are
+reported and do not suppress anything.
 
-🧬 5. Finding Fingerprinting
+## Reachability and risk
 
-Each security finding requires a stable identity.
+`UNREACHABLE` requires explicit scanner evidence such as `properties.reachable=false` or
+`properties.reachability="unreachable"`. Positive context linking user input to a database, command, or
+external endpoint may establish `REACHABLE`. Missing or inconclusive evidence is always `UNKNOWN`, never
+optimistically unreachable.
 
-The project studies deterministic fingerprints based on information such as:
+Risk scores are deterministic and derived from severity, confidence, and reachability. They aid ordering and
+reporting; the gate decision remains policy-based and explainable.
 
-Rule ID
-    +
-Normalized File Path
-    +
-Start Line
-    +
-End Line
+## Security gate
 
-The resulting identity can be hashed using SHA-256.
+The default policy blocks reachable high/critical findings, warns on medium findings and high/critical findings
+with unknown reachability, passes explicitly unreachable or lower-risk valid findings, preserves suppressions,
+and returns unknown for invalid findings or unknown severity. Set `block_unknown_reachability` to fail closed on
+high/critical findings without reachability evidence.
 
-Finding
-   ↓
-Normalized Identity
-   ↓
-SHA-256 Fingerprint
+```json
+{
+  "gate": {
+    "block_severities": ["critical", "high"],
+    "warn_severities": ["medium"],
+    "block_unknown_reachability": false,
+    "analyze_decisions": ["block", "warn", "unknown"]
+  }
+}
+```
 
-This helps identify the same finding across scans.
+## Agentic analysis
 
-♻️ 6. Finding Deduplication
+The default `heuristic` provider is deterministic, offline, and needs no credentials. Set the provider to
+`none` to disable analysis or `openai` to use an OpenAI Responses-compatible HTTPS endpoint.
 
-Multiple scanners or repeated scans may report the same underlying issue.
+Environment variables:
 
-Deduplication helps reduce duplicate findings.
+- `AGENTIC_VAPT_AI_PROVIDER`: `heuristic`, `none`, or `openai`.
+- `AGENTIC_VAPT_LLM_API_KEY`: required only for `openai`.
+- `AGENTIC_VAPT_LLM_MODEL`: model name; defaults to `gpt-5-mini`.
+- `AGENTIC_VAPT_LLM_BASE_URL`: defaults to `https://api.openai.com/v1/responses`.
+- `AGENTIC_VAPT_LLM_ALLOWED_HOSTS`: comma-separated HTTPS host allow-list; defaults to `api.openai.com`.
 
-Raw Findings
-     ↓
-Fingerprint Generation
-     ↓
-Duplicate Detection
-     ↓
-Unique Findings
+Remote endpoints require HTTPS and an exact host allow-list match. HTTP is accepted only for localhost to
+support local model servers, and redirects are not followed. Credentials are never written to findings or
+reports. Prompts mark scanner evidence and source snippets as untrusted data, context is bounded, structured
+output is validated, and provider failures become per-finding analysis errors. AI output cannot bypass or
+modify deterministic gate decisions.
 
-This improves the quality of downstream analysis.
+## Reporting
 
-🚦 7. Finding Gating
+`assessment.json` is machine-readable and contains scanner states, stage counts, pipeline errors, every finding,
+raw metadata, decisions, and AI analysis. `assessment.md` is the human-readable audit report. Suppressed,
+unreachable, passed, warned, blocked, and unknown findings remain visible.
 
-Not every scanner result should automatically move to expensive AI analysis.
+## Testing and validation
 
-Finding gating can filter or retain findings based on security policies.
+Run the integrated suite:
 
-Example learning policy:
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
 
-HIGH       → KEEP
-MEDIUM     → KEEP
-LOW        → FILTER
+Run the preserved adapter suite:
 
-In a production implementation, this can evolve into more sophisticated policy-based gating.
+```powershell
+.\.venv\Scripts\python.exe Day-06/test_semgrep_adapter.py
+```
 
-📊 8. Context Enrichment & Risk Scoring
+Run compilation and lint checks:
 
-A finding becomes more useful when additional security context is available.
+```powershell
+.\.venv\Scripts\python.exe -m compileall -q agentic_vapt tests
+.\.venv\Scripts\ruff.exe check agentic_vapt tests
+```
 
-The project studies indicators such as:
+Tests use in-memory/local fixtures only. They do not scan or attack external systems. Coverage includes valid,
+empty, optional, and malformed SARIF; fingerprints; exact and cross-scanner duplicates; suppressions;
+reachability; every gate state; valid/invalid/missing/failing AI behavior; scanner failure; reporting; and the
+complete mocked assessment.
 
-User Input
-Database Operation
-Authentication
-Command Execution
-External Endpoint
-Sensitive Data
+## Configuration and failure behavior
 
-These signals can contribute to a contextual risk score.
+See `examples/demo_config.json` for every configuration section. Timeouts and maximum SARIF size are positive,
+validated values. Scanner, normalization, suppression, AI, and file errors are preserved in the result. A
+single malformed result does not terminate the assessment. If no scanner yields valid SARIF, the assessment is
+`UNKNOWN`, not `PASS`.
 
-Example:
+Copy `.env.example` for local environment values. Never commit `.env` or real secrets.
 
-Scanner Severity
-       +
-Security Context
-       +
-Risk Signals
-       ↓
-Contextual Risk Score
-       ↓
-Priority
+## Limitations
 
-The learning implementation uses a simple scoring model to demonstrate the concept.
-
-🤖 9. LLM-Based Security Analysis
-
-LLMs can be used to assist in interpreting security findings.
-
-Instead of sending only:
-
-"Possible SQL injection"
-
-the AI analysis stage can receive:
-
-Finding Metadata
-      +
-Risk Score
-      +
-Security Context
-      +
-Relevant Source Code
-
-The LLM can then provide structured reasoning such as:
-
-Security Reasoning
-Evidence
-Confidence
-Recommended Next Step
-🧠 10. Source-Code-Aware AI Reasoning
-
-A major concept studied in this repository is that AI analysis should be evidence-driven.
-
-The AI should receive relevant source-code context instead of relying only on a scanner's description.
-
-Example:
-
-query = "SELECT * FROM users WHERE username='" + username + "'"
-return query
-
-Combined with:
-
-User Input = True
-Database Operation = True
-
-the AI has more information for reasoning about the finding.
-
-🛡️ 11. Finding Validation & Exploit Verification
-
-An important distinction in the project is:
-
-Scanner Finding ≠ Confirmed Vulnerability
-
-A scanner may identify a suspicious pattern, but further validation may be required.
-
-The larger architecture therefore includes a validation stage:
-
-Potential Finding
-      ↓
-AI Analysis
-      ↓
-Validation Hypothesis
-      ↓
-Security Testing
-      ↓
-Evidence
-      ↓
-Validated / Not Validated
-
-This is important for reducing false positives and preventing unsupported AI conclusions.
-
-🕸️ 12. Risk & Attack-Path Analysis
-
-A vulnerability should not always be evaluated in isolation.
-
-The architecture can correlate:
-
-Entry points
-User-controlled input
-Vulnerable functions
-Data-flow paths
-Authentication boundaries
-Sensitive resources
-External endpoints
-Reachability
-Exploitability
-
-Conceptually:
-
-Attacker
-   ↓
-Entry Point
-   ↓
-User Input
-   ↓
-Application Logic
-   ↓
-Vulnerable Function
-   ↓
-Sensitive Resource
-
-This helps determine whether a finding participates in a meaningful attack path.
-
-🔄 13. CI/CD Integration
-
-The long-term goal is to integrate security analysis into the development workflow.
-
-A conceptual workflow is:
-
-Developer Commit
-       ↓
-GitHub Workflow
-       ↓
-Changed-Code Analysis
-       ↓
-Security Scanners
-       ↓
-Finding Processing
-       ↓
-AI Analysis
-       ↓
-Validation
-       ↓
-Risk Decision
-       ↓
-Security Gate
-       ↓
-Report
-
-This allows security testing to become part of the software development lifecycle rather than a completely separate activity.
-
-📋 14. Reporting
-
-The final stage can generate structured security information for developers and security teams.
-
-Potential reporting information includes:
-
-Finding
-Severity
-Risk score
-Confidence
-Evidence
-Source location
-Validation status
-Exploitability
-Attack path
-Recommended remediation
-Security decision
-
-The goal is to transform raw scanner output into actionable security intelligence.
-
-🧩 Agentic VAPT Pipeline
-
-The overall learning architecture can be summarized as:
-
-┌───────────────────────────────────────────┐
-│              SOURCE / GIT                │
-└─────────────────────┬─────────────────────┘
-                      ↓
-┌───────────────────────────────────────────┐
-│        CHANGE & CODE INTELLIGENCE         │
-│   Git Diff • AST • Tree-sitter • CPG      │
-└─────────────────────┬─────────────────────┘
-                      ↓
-┌───────────────────────────────────────────┐
-│            SECURITY DETECTION             │
-│ Semgrep • OSV • Trivy • Gitleaks • Checkov│
-│                 • DAST                    │
-└─────────────────────┬─────────────────────┘
-                      ↓
-┌───────────────────────────────────────────┐
-│        FINDING NORMALIZATION              │
-│             SARIF → Finding               │
-└─────────────────────┬─────────────────────┘
-                      ↓
-┌───────────────────────────────────────────┐
-│       IDENTITY & QUALITY CONTROL          │
-│ Fingerprinting • Deduplication • Gating   │
-└─────────────────────┬─────────────────────┘
-                      ↓
-┌───────────────────────────────────────────┐
-│          RISK & CONTEXT ANALYSIS          │
-│ Context Enrichment • Risk Scoring         │
-└─────────────────────┬─────────────────────┘
-                      ↓
-┌───────────────────────────────────────────┐
-│              AI ANALYSIS                  │
-│ Source Context • LLM Reasoning            │
-└─────────────────────┬─────────────────────┘
-                      ↓
-┌───────────────────────────────────────────┐
-│          SECURITY VALIDATION              │
-│ Reachability • Testing • Exploit Evidence │
-└─────────────────────┬─────────────────────┘
-                      ↓
-┌───────────────────────────────────────────┐
-│          RISK / ATTACK PATH               │
-│       Analysis & Correlation              │
-└─────────────────────┬─────────────────────┘
-                      ↓
-┌───────────────────────────────────────────┐
-│          FINAL SECURITY DECISION          │
-└─────────────────────┬─────────────────────┘
-                      ↓
-             ┌────────┴────────┐
-             ↓                 ↓
-          CI/CD             Reports
-📚 Learning Progress
-
-This repository is organized as a day-by-day learning journey.
-🧪 Technologies & Concepts
-Programming
-Python
-JSON
-PowerShell
-Git / GitHub
-Code Intelligence
-Python AST
-Tree-sitter
-Code Property Graphs
-Differential analysis
-Call graphs
-Data-flow analysis
-Security Testing
-SAST
-DAST
-Semgrep
-OSV-Scanner
-Trivy
-Gitleaks
-Checkov
-AI / LLM
-LLM-based security reasoning
-Structured prompts
-Context-aware analysis
-Evidence-based reasoning
-AI-assisted triage
-Security validation
-Security Engineering
-Finding normalization
-SARIF
-Fingerprinting
-Deduplication
-Finding gating
-Risk scoring
-Attack-path analysis
-Exploit verification
-CI/CD security gates
-🧠 Key Design Principles
-1. Scanner Findings Are Not Automatically Truth
-
-A scanner finding represents a potential security issue.
-
-Finding ≠ Confirmed Vulnerability
-
-Further analysis and validation may be required.
-
-2. AI Reasoning Should Be Evidence-Based
-
-LLM analysis should be grounded in:
-
-Finding
-+
-Source Code
-+
-Security Context
-+
-Security Signals
-
-rather than relying solely on the model's general knowledge.
-
-3. Deterministic Components Should Remain Deterministic
-
-Tasks such as:
-
-parsing,
-fingerprinting,
-deduplication,
-normalization,
-policy gating,
-
-should preferably use deterministic logic.
-
-AI can then focus on tasks where reasoning and interpretation provide value.
-
-4. Validation Should Be Separate From Reasoning
-
-An AI model can propose that a vulnerability appears likely.
-
-That does not mean it has proven exploitability.
-
-Therefore:
-
-AI Hypothesis
-      ↓
-Validation
-      ↓
-Evidence
-      ↓
-Security Decision
-5. Minimize Unnecessary Context
-
-The system should provide the AI with relevant information rather than blindly sending the entire repository.
-
-Changed Code
-     ↓
-Relevant Functions
-     ↓
-Relevant Source Context
-     ↓
-Security Finding
-     ↓
-LLM
-
-This can improve both efficiency and analysis quality.
-
-🔐 Security Considerations
-
-Because this project deals with source code and security findings, the implementation must consider:
-
-Secret redaction
-Sensitive-data handling
-Secure API-key management
-Least-privilege execution
-Sandbox isolation for validation
-Safe handling of generated exploits
-Audit logging
-Reproducibility
-Human review for high-impact decisions
-
-Credentials, API keys, production secrets, and sensitive company data should not be committed to this repository.
-
-🚧 Current Implementation Status
-
-The repository currently focuses on learning and prototyping individual pipeline stages.
-
-Completed Learning Stages
-Git & Code Intelligence              ✅
-Tree-sitter Parsing                  ✅
-Git Diff & Change Scoping            ✅
-Differential Analysis                ✅
-Semgrep & SARIF                      ✅
-Finding Fingerprinting               ✅
-Finding Deduplication                ✅
-Finding Gating                       ✅
-Context Enrichment                   ✅
-Risk Scoring                         ✅
-LLM Prompt Preparation               ✅
-Source-Code Context Extraction       ✅
-Structured LLM Request Preparation   ✅
-Security Analysis Output             ✅
-Future / Advanced Stages
-Multi-Scanner Orchestration
-        ↓
-Dependency / Container / IaC Correlation
-        ↓
-Code Property Graph Integration
-        ↓
-LLM Agent Orchestration
-        ↓
-Real LLM API Integration
-        ↓
-Reachability Analysis
-        ↓
-Exploit Validation
-        ↓
-Attack-Path Analysis
-        ↓
-CI/CD Security Gate
-        ↓
-Production Reporting
-⚠️ Prototype vs Production
-
-This repository intentionally separates learning implementations from the requirements of a production security platform.
-
-Some current implementations use simplified logic to demonstrate concepts such as:
-
-risk scoring,
-security context detection,
-finding gating,
-AI reasoning,
-source-code context extraction.
-
-These implementations should not automatically be considered production-ready security controls.
-
-Production hardening would require:
-
-robust schemas,
-comprehensive test suites,
-secure execution environments,
-real vulnerability validation,
-proper LLM integration,
-secret handling,
-error recovery,
-observability,
-performance controls,
-auditability,
-policy enforcement.
-📈 Learning Roadmap
-PHASE 1 — FOUNDATIONS
-│
-├── Agentic VAPT Architecture
-├── Git
-├── AST
-├── Tree-sitter
-└── SARIF
-        ↓
-PHASE 2 — SECURITY DETECTION
-│
-├── Semgrep
-├── Differential Scanning
-├── Finding Normalization
-├── Fingerprinting
-└── Deduplication
-        ↓
-PHASE 3 — INTELLIGENT TRIAGE
-│
-├── Finding Gating
-├── Context Enrichment
-├── Risk Scoring
-└── Source-Code Context
-        ↓
-PHASE 4 — AI SECURITY REASONING
-│
-├── LLM Prompting
-├── Structured LLM Requests
-├── Security Reasoning
-└── Evidence-Based Analysis
-        ↓
-PHASE 5 — VALIDATION
-│
-├── Reachability
-├── Security Testing
-├── Exploit Verification
-└── False-Positive Reduction
-        ↓
-PHASE 6 — AGENTIC ORCHESTRATION
-│
-├── Security Agents
-├── Tool Orchestration
-├── Attack-Path Analysis
-└── Final Security Decisions
-        ↓
-PHASE 7 — AUTOMATION
-│
-├── CI/CD
-├── Security Gates
-├── Reporting
-└── Dashboard
-🎯 Final Goal
-
-The ultimate goal is to understand and prototype a security system that can move from:
-
-"Something looks suspicious."
-
-to:
-
-"Here is the finding."
-        ↓
-"Here is the relevant code."
-        ↓
-"Here is why it may be vulnerable."
-        ↓
-"Here is the evidence."
-        ↓
-"Here is the attack path."
-        ↓
-"Here is whether it can actually be validated."
-        ↓
-"Here is the final security decision."
-
-This represents the core idea behind an AI-powered, agentic, exploit-verified VAPT workflow.
-
-📌 Repository Purpose
-
-This repository serves as a technical learning record covering the progression from:
-
-Traditional Security Scanning
-
-to
-
-Context-Aware AI-Assisted Security Analysis
-
-and ultimately toward:
-
-Automated Agentic VAPT with Validation and Risk-Based Decision Making.
-
-🚀 Project Status
-
-Learning & Prototype Development — In Progress
-
-Day 01 ───────────────────────────────► Day 11+
-   Foundations
-       ↓
-   Detection
-       ↓
-   Triage
-       ↓
-   AI Analysis
-       ↓
-   Validation
-       ↓
-   Agentic VAPT
-🛡️ Agentic VAPT
-
-Detect → Understand → Reason → Validate → Verify → Prioritize → Report
+- Built-in execution currently supports Semgrep; other tools integrate by supplying SARIF or a small adapter.
+- Reachability consumes explicit scanner/context evidence and does not yet build a whole-program call graph or
+  code property graph.
+- Cross-scanner deduplication is conservative and benefits from scanners emitting CWE or another canonical
+  vulnerability type.
+- The external AI provider is optional decision support, not exploit validation or an autonomous authority.
+- This project does not perform DAST, exploitation, or network target discovery.
+
+## Security considerations
+
+Use the project only on repositories and systems you are authorized to assess. Review scanner rules before
+running them. Keep targets/rules inside the workspace, protect reports because raw evidence may contain source
+snippets, and rotate any real credential that appears in a finding. The demo uses reserved `.invalid` URLs and
+never requests them.

@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Agentic VAPT Demo Scanner",
+          "version": "1.0.0",
+          "informationUri": "https://example.invalid/agentic-vapt-demo",
+          "rules": [
+            {
+              "id": "demo.sql-injection",
+              "shortDescription": { "text": "SQL query built from user input" },
+              "fullDescription": { "text": "User-controlled input is concatenated into a SQL query." },
+              "defaultConfiguration": { "level": "error" },
+              "properties": { "tags": ["CWE-89"], "security-severity": "8.8" },
+              "help": { "text": "Use parameterized queries and bind all user-supplied values." }
+            },
+            {
+              "id": "demo.hardcoded-secret",
+              "shortDescription": { "text": "Hardcoded demonstration credential" },
+              "defaultConfiguration": { "level": "warning" },
+              "properties": { "tags": ["CWE-798"] },
+              "help": { "text": "Load credentials from an approved environment or secret store." }
+            },
+            {
+              "id": "demo.command-injection",
+              "shortDescription": { "text": "Potential command injection in retired code" },
+              "defaultConfiguration": { "level": "error" },
+              "properties": { "tags": ["CWE-78"], "security-severity": "9.1" },
+              "help": { "text": "Use fixed process arguments and remove shell interpretation." }
+            },
+            {
+              "id": "demo.weak-hash",
+              "shortDescription": { "text": "Weak hash used for non-security cache key" },
+              "defaultConfiguration": { "level": "note" },
+              "properties": { "tags": ["CWE-328"] }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "demo.sql-injection",
+          "level": "error",
+          "message": { "text": "Request parameter is concatenated into an authentication query." },
+          "properties": {
+            "vulnerability_type": "CWE-89",
+            "confidence": "high",
+            "reachability": "reachable",
+            "endpoint": "https://demo.invalid/login"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "fixtures/demo_login.py" },
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 13,
+                  "endLine": 8,
+                  "endColumn": 66,
+                  "snippet": { "text": "query = \"SELECT * FROM users WHERE name='\" + username + \"'\"" }
+                }
+              }
+            }
+          ],
+          "fingerprints": { "demo/v1": "source-specific-sql-1" }
+        },
+        {
+          "ruleId": "demo.sql-injection",
+          "level": "error",
+          "message": { "text": "Duplicate engine result for the same SQL data flow." },
+          "properties": {
+            "vulnerability_type": "CWE-89",
+            "confidence": "medium",
+            "reachability": "reachable",
+            "endpoint": "https://demo.invalid/login"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "fixtures/demo_login.py" },
+                "region": { "startLine": 8, "startColumn": 13, "endLine": 8, "endColumn": 66 }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "demo.hardcoded-secret",
+          "level": "warning",
+          "message": { "text": "A test-only credential placeholder is present." },
+          "properties": { "vulnerability_type": "CWE-798", "confidence": "high" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "fixtures/demo_config.py" },
+                "region": { "startLine": 3, "startColumn": 12, "endLine": 3, "endColumn": 33 }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "demo.command-injection",
+          "level": "error",
+          "message": { "text": "A shell call exists in code excluded from the shipped application." },
+          "properties": {
+            "vulnerability_type": "CWE-78",
+            "confidence": "high",
+            "reachability": "unreachable",
+            "unreachable_reason": "The module is not imported, packaged, or routed by the application."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "fixtures/retired_admin.py" },
+                "region": { "startLine": 21, "startColumn": 5, "endLine": 21, "endColumn": 42 }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "demo.weak-hash",
+          "level": "note",
+          "message": { "text": "MD5 is used for a non-security cache key." },
+          "properties": { "vulnerability_type": "CWE-328", "confidence": "medium" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "fixtures/cache.py" },
+                "region": { "startLine": 14, "startColumn": 12, "endLine": 14, "endColumn": 35 }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
