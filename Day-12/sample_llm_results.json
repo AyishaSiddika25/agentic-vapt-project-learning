@@ -1,0 +1,24 @@
+[
+    {
+        "finding": "Possible SQL injection",
+        "security_reasoning": "The finding appears security-relevant because user-controlled input is combined with a SQL query.",
+        "evidence": [
+            "User-controlled input is involved.",
+            "A database operation is involved.",
+            "Relevant source-code evidence is available."
+        ],
+        "confidence": "High",
+        "recommended_next_step": "Validate the suspected SQL injection using source-code analysis and security testing."
+    },
+    {
+        "finding": "Possible hardcoded password",
+        "security_reasoning": "The finding appears security-relevant because a password is directly stored in the source code.",
+        "evidence": [
+            "Authentication-related information is involved.",
+            "Sensitive data may be involved.",
+            "Relevant source-code evidence is available."
+        ],
+        "confidence": "Medium",
+        "recommended_next_step": "Review the credential handling and verify whether the password is actually used in production."
+    }
+]

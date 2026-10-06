@@ -1,0 +1,38 @@
+[
+    {
+        "scanner": "Semgrep",
+        "rule_id": "python.sql-injection",
+        "message": "Possible SQL injection",
+        "severity": "high",
+        "file": "login.py",
+        "start_line": 10,
+        "start_column": 5,
+        "end_line": 10,
+        "end_column": 30,
+        "fingerprint": "623c073175c1ff7ebea25c6a1f3b495f1c4991a8047046161289ce5ea0d70987"
+    },
+    {
+        "scanner": "Semgrep",
+        "rule_id": "python.hardcoded-password",
+        "message": "Possible hardcoded password",
+        "severity": "medium",
+        "file": "config.py",
+        "start_line": 5,
+        "start_column": 1,
+        "end_line": 5,
+        "end_column": 25,
+        "fingerprint": "647017b03c719b3e4c7f235a4b0a0670a2f35433d2df5c50cdebbea3546ce746"
+    },
+    {
+        "scanner": "Semgrep",
+        "rule_id": "python.command-injection",
+        "message": "Possible command injection",
+        "severity": "high",
+        "file": "admin.py",
+        "start_line": 20,
+        "start_column": 5,
+        "end_line": 20,
+        "end_column": 35,
+        "fingerprint": "example-command-injection"
+    }
+]

@@ -53,6 +53,13 @@ gate decision.
 - `docs/audit.md`: baseline audit, architecture rationale, and security review.
 - `Day-01/` through `Day-12/`: preserved learning prototypes and notes.
 
+## Learning history
+
+The Day-01–Day-12 directories remain the project's learning record: Git and change intelligence, AST and
+Tree-sitter exploration, differential analysis, Semgrep and SARIF, finding identity and gating, context and
+risk scoring, source-aware prompting, structured AI analysis, and decision validation. The integrated package
+turns those prototypes into the runnable pipeline documented below without erasing their educational context.
+
 ## Installation
 
 Python 3.11 or newer is required. The runtime has no third-party Python dependencies.
