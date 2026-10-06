@@ -62,6 +62,20 @@ class EndToEndPipelineTests(unittest.TestCase):
         self.assertEqual(result.findings[0].decision, GateDecision.SUPPRESSED)
         self.assertEqual(result.analyses, [])
 
+    def test_suppressed_report_keeps_actionable_remediation(self) -> None:
+        config = AppConfig(
+            suppressions=(
+                {"id": "demo", "reason": "fixture", "selectors": {"rule_id": "python.sql-injection"}},
+            )
+        )
+        document = make_sarif()
+        document["runs"][0]["tool"]["driver"]["rules"][0]["help"] = {"text": "Possible SQL injection"}
+        result = AssessmentPipeline([InMemoryScanner(document)], config).run()
+        with tempfile.TemporaryDirectory() as directory:
+            _, markdown_path = write_reports(result, directory)
+            report = markdown_path.read_text(encoding="utf-8")
+        self.assertIn("Recommended remediation: Use parameterized queries", report)
+
     def test_reports_include_suppressed_and_blocked_states(self) -> None:
         result = AssessmentPipeline([InMemoryScanner(make_sarif())], AppConfig()).run()
         with tempfile.TemporaryDirectory() as directory:

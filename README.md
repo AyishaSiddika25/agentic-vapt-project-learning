@@ -43,7 +43,7 @@ gate decision.
 - Offline heuristic analysis and an optional OpenAI Responses-compatible provider with bounded context,
   response validation, timeouts, and graceful errors.
 - Auditable JSON and Markdown reports that retain suppressed, unreachable, blocked, and unknown findings.
-- A safe fixture-based demo, 50 integrated tests, the 17 preserved Day-06 tests, and GitHub Actions CI.
+- A safe fixture-based demo, 51 integrated tests, the 17 preserved Day-06 tests, and GitHub Actions CI.
 
 ## Repository layout
 

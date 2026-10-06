@@ -53,7 +53,7 @@ class HeuristicAnalyzer:
         confidence = "high" if finding.confidence is not None and finding.confidence >= 0.75 else "medium"
         if finding.reachability.value == "unknown":
             confidence = "low"
-        remediation = _recommended_remediation(finding)
+        remediation = recommended_remediation(finding)
         return AnalysisResult(
             fingerprint=finding.fingerprint,
             status="completed",
@@ -245,7 +245,9 @@ def _default_remediation(identity: str) -> str:
     return "Review the evidence, confirm reachability, and apply the scanner rule's recommended remediation."
 
 
-def _recommended_remediation(finding: Finding) -> str:
+def recommended_remediation(finding: Finding) -> str:
+    """Return useful scanner guidance or a vulnerability-aware fallback."""
+
     scanner_help = finding.remediation.strip()
     generic_scanner_text = {
         finding.title.strip().casefold(),
